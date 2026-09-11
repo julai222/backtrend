@@ -1,10 +1,11 @@
 import { checkDatabase } from "../services/health.service.js";
 
 export const healthCheck = async (req, res) => {
-  const dbConnected = await checkDatabase();
+  const dbStatus = await checkDatabase();
 
-  res.status(dbConnected ? 200 : 503).json({
+  res.status(dbStatus.ok ? 200 : 503).json({
     api: "UP",
-    database: dbConnected ? "UP" : "DOWN",
+    database: dbStatus.ok ? "UP" : "DOWN",
+    ...(dbStatus.ok ? {} : { error: dbStatus.error }),
   });
 };

@@ -1,0 +1,184 @@
+### CONFIGURACIÓN DE VARIABLES
+@urlbase = http://localhost:3000
+@urlhealth = {{urlbase}}/health
+@urlAuth = {{urlbase}}/auth
+@urlUser = {{urlbase}}/users
+@urlSubjects = {{urlbase}}/subjects
+@urlEnrollments = {{urlbase}}/enrollments
+
+# NOTA: Para probar los endpoints que requieren ID, por favor copia un UUID
+# generado al crear los usuarios o materias e insértalo en las variables de abajo:
+@profesorId = 2313e021-1325-42ba-848d-6df2d5138764
+@alumnoId = aba97375-d03e-4995-ac60-8b9c10f456b0
+@materiaId = f47ac10b-58cc-4372-a567-0e02b2c3d479
+
+# Tokens: se llenan al ejecutar "Login Profesor" y "Login Alumno" (en ese orden).
+# IMPORTANTE: estas líneas @ NO deben ir nunca entre el body de un request y el siguiente ###
+@tokenProfesor = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjIzMTNlMDIxLTEzMjUtNDJiYS04NDhkLTZkZjJkNTEzODc2NCIsIm5vbWJyZSI6IlByb2Zlc29yIEppcmFmYWxlcyIsImVtYWlsIjoicHJvZmVzb3IuZGVtb0Blc2N1ZWxhLmNvbSIsInJvbCI6InByb2Zlc29yIiwiaWF0IjoxNzg3MzE0OTE0LCJleHAiOjE3ODc0MDEzMTR9.HXSbEyy4OxnoFe-LwwAUEZnnhGGrMkrHDy93XOZXH7A
+@tokenAlumno = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFiYTk3Mzc1LWQwM2UtNDk5NS1hYzYwLThiOWMxMGY0NTZiMCIsIm5vbWJyZSI6IkVsIENoYXZvIGRlbCBPY2hvIiwiZW1haWwiOiJhbHVtbm8uZGVtb0B2ZWNpbmRhZC5jb20iLCJyb2wiOiJhbHVtbm8iLCJpYXQiOjE3ODY3Mzg1MTksImV4cCI6MTc4NjgyNDkxOX0.IkRxsKciycnlXBe3kkFzLNYnZxlLmMwo4UMbIuXp6CA
+
+
+### 0. HEALTH CHECK (Público)
+
+### Health Check del Servidor
+GET {{urlhealth}}
+
+
+### 1. AUTH - LOGIN (Público)
+
+### Crear Usuario 1 (Profesor) - Registro público
+POST {{urlUser}}
+Content-Type: application/json
+
+{
+    "nombre": "Profesor Jirafales",
+    "email": "profesor.demo@escuela.com",
+    "password": "password123",
+    "rol": "profesor"
+}
+
+### Crear Usuario 2 (Alumno) - Registro público
+POST {{urlUser}}
+Content-Type: application/json
+
+{
+    "nombre": "El Chavo del Ocho",
+    "email": "alumno.demo@vecindad.com",
+    "password": "password123",
+    "rol": "alumno"
+}
+
+### Login Profesor -> devuelve el token (guardar en {{tokenProfesor}})
+# @name loginProfesor
+POST {{urlAuth}}/login
+Content-Type: application/json
+
+{
+    "email": "profesor.demo@escuela.com",
+    "password": "password123"
+}
+
+### Login Alumno -> devuelve el token (guardar en {{tokenAlumno}})
+# @name loginAlumno
+POST {{urlAuth}}/login
+Content-Type: application/json
+
+{
+    "email": "alumno.demo@vecindad.com",
+    "password": "password123"
+}
+
+### 2. CRUD DE USUARIOS (Protegido con token)
+
+### Listar todos los usuarios (requiere token)
+GET {{urlUser}}
+Authorization: Bearer {{tokenProfesor}}
+
+### Obtener un usuario específico por su ID (requiere token)
+GET {{urlUser}}/{{alumnoId}}
+Authorization: Bearer {{tokenProfesor}}
+
+### Modificar/Actualizar un usuario (requiere token)
+PUT {{urlUser}}/{{alumnoId}}
+Authorization: Bearer {{tokenProfesor}}
+Content-Type: application/json
+
+{
+    "nombre": "Chavo Metalero",
+    "password": "nuevo_password_seguro"
+}
+
+### Eliminar un usuario específico (requiere token)
+DELETE {{urlUser}}/{{alumnoId}}
+Authorization: Bearer {{tokenProfesor}}
+
+
+### 3. CRUD DE MATERIAS (SOLO PROFESOR)
+
+### Crear una Materia - SOLO PROFESOR (un alumno recibirá 403)
+POST {{urlSubjects}}
+Authorization: Bearer {{tokenAlumno}}
+Content-Type: application/json
+
+{
+    "nombre": "Aritmética Básica",
+    "profesor_id": "{{profesorId}}"
+}
+
+### INTENTO PROHIBIDO: alumno intenta crear una materia -> 403
+POST {{urlSubjects}}
+Authorization: Bearer {{tokenAlumno}}
+Content-Type: application/json
+
+{
+    "nombre": "Materia Ilegal",
+    "profesor_id": "{{profesorId}}"
+}
+
+### Listar todas las materias (requiere token)
+GET {{urlSubjects}}
+Authorization: Bearer {{tokenProfesor}}
+
+### Obtener una materia específica por su ID (requiere token)
+GET {{urlSubjects}}/{{materiaId}}
+Authorization: Bearer {{tokenProfesor}}
+
+### Modificar/Actualizar una materia - SOLO PROFESOR
+PUT {{urlSubjects}}/{{materiaId}}
+Authorization: Bearer {{tokenProfesor}}
+Content-Type: application/json
+
+{
+    "nombre": "Álgebra Avanzada"
+}
+
+### Eliminar una materia (Soft-Delete) - SOLO PROFESOR
+DELETE {{urlSubjects}}/{{materiaId}}
+Authorization: Bearer {{tokenProfesor}}
+
+
+### 4. RELACIÓN "DICTAN" - Profesor dicta Materia (SOLO PROFESOR)
+
+### Registrar/Cambiar qué profesor dicta qué materia
+PUT {{urlSubjects}}/{{materiaId}}/teacher
+Authorization: Bearer {{tokenProfesor}}
+Content-Type: application/json
+
+{
+    "profesor_id": "{{profesorId}}"
+}
+
+### Consultar las materias asignadas a un profesor (requiere token)
+GET {{urlUser}}/teachers/{{profesorId}}/subjects
+Authorization: Bearer {{tokenProfesor}}
+
+
+### 5. RELACIÓN "CURSAN" - Alumno cursa Materia (SOLO ALUMNO)
+
+### Inscribir a un alumno en una materia - SOLO ALUMNO (un profesor recibirá 403)
+POST {{urlEnrollments}}
+Authorization: Bearer {{tokenAlumno}}
+Content-Type: application/json
+
+{
+    "alumno_id": "{{alumnoId}}",
+    "materia_id": "{{materiaId}}"
+}
+
+### Consultar las materias que está cursando un alumno (requiere token)
+GET {{urlUser}}/students/{{alumnoId}}/subjects
+Authorization: Bearer {{tokenAlumno}}
+
+### Consultar todos los alumnos inscritos en una materia (requiere token)
+GET {{urlEnrollments}}/subject/{{materiaId}}
+Authorization: Bearer {{tokenProfesor}}
+
+### Desinscribir a un alumno de una materia - SOLO ALUMNO
+DELETE {{urlEnrollments}}
+Authorization: Bearer {{tokenAlumno}}
+Content-Type: application/json
+
+{
+    "alumno_id": "{{alumnoId}}",
+    "materia_id": "{{materiaId}}"
+}
